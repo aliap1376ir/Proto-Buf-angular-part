@@ -1,9 +1,9 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Observable, throwError, from } from 'rxjs';
-import { catchError, retry } from 'rxjs/operators';
+import { catchError, map, retry } from 'rxjs/operators';
 import { Byte } from '@angular/compiler/src/util';
-import { IPerson } from '../objects/objects';
+import { IPerson, People, Person } from '../objects/objects';
 
 @Injectable()
 export class ApiService {
@@ -17,17 +17,28 @@ export class ApiService {
 
   constructor(private http: HttpClient) {}
 
-  register(person: ArrayBuffer) {
-    return this.http.post(this.urlRegister, person, {
-      headers: this.headers,
-      responseType: 'arraybuffer',
-    });
+  register(person: IPerson) {
+    const encodedPerson = Person.encode(person).finish();
+    const offset = encodedPerson.byteOffset;
+    const length = encodedPerson.byteLength;
+    const personArrayBuffer = encodedPerson.buffer.slice(
+      offset,
+      offset + length
+    );
+    return this.http
+      .post(this.urlRegister, personArrayBuffer, {
+        headers: this.headers,
+        responseType: 'arraybuffer',
+      })
+      .pipe(map((response) => Person.decode(new Uint8Array(response))));
   }
 
   all() {
-    return this.http.get(this.urlAll, {
-      headers: this.headers,
-      responseType: 'arraybuffer',
-    });
+    return this.http
+      .get(this.urlAll, {
+        headers: this.headers,
+        responseType: 'arraybuffer',
+      })
+      .pipe(map((response) => People.decode(new Uint8Array(response))));
   }
 }
